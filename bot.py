@@ -10,8 +10,6 @@ from format_signal import format_signal
 from constants import BotMessages 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from constants import CURRENCY_PAIRS
-from user_data_manager import load_user_data, save_user_data
-
 from get_trading_signal import get_trading_signal
 
 # Set up logging
