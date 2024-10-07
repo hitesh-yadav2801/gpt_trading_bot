@@ -1,9 +1,8 @@
-# Async function to get trading signal
 import json
 from openai import OpenAI
 from fetch_forex_data import fetch_and_save_forex_data
 from format_signal import format_signal
-
+from datetime import datetime, timedelta
 
 OPENAI_API_KEY = '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'
 
@@ -14,9 +13,13 @@ async def get_trading_signal(pair):
     """
     Function to fetch a trading signal using OpenAI/ChatGPT and live market data.
     """
+    # Calculate the date for three days ago
+    three_days_ago = datetime.now() - timedelta(days=3)
+    formatted_date = three_days_ago.strftime('%Y-%m-%d')  # Format the date as 'YYYY-MM-DD'
+
     # Fetch live Forex data
     from_currency, to_currency = pair[:3], pair[3:]
-    market_data = fetch_and_save_forex_data(from_currency, to_currency, '2024-10-01', '5min')
+    market_data = fetch_and_save_forex_data(from_currency, to_currency, formatted_date, '5min')
 
     print(market_data)
     
@@ -26,7 +29,7 @@ async def get_trading_signal(pair):
         completion = openai_client.chat.completions.create(
             model="gpt-3.5-turbo-0125",
             messages=[
-                {"role": "system", "content": f"Analyze the following market data for {pair} and provide a JSON object with the keys: 'signal_type', 'moving_average', and 'technical_indicators'. For example: {{'signal_type': 'Buy', 'moving_average': 'Neutral', 'technical_indicators': 'Sell'}}. Here is the data: {market_data}. Don't give unnecessary information. Just provide the JSON object."},
+                {"role": "system", "content": f"Analyze the following market data for {pair} and provide a JSON object with the keys: 'signal_type', 'moving_average', and 'technical_indicators'. For example: {{'signal_type': 'Buy', 'moving_average': 'Neutral', 'technical_indicators': 'Sell'}}. If market potential is high then use Strong Buy or Buy. If market potential is low then use Strong Sell or Sell. Here is the data: {market_data}. Don't give unnecessary information. Just provide the JSON object."},
                 {"role": "user", "content": "What is the trading signal?"}
             ]
         )

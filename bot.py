@@ -25,8 +25,13 @@ user_signal_count = {}
 verified_users = {}
 isTestSignal = False
 
+# Dictionary to track the last time each user accessed the select_pair command
+user_last_access_time = {}
+COOLDOWN_PERIOD = 300  # Cooldown period in seconds (5 minutes)
+
+
 # Referral link (replace with your actual link)
-REFERRAL_LINK = "https://pocket1.click/smart/QLmdLojLR4E7Et"
+REFERRAL_LINK = "https://broker-qx.pro/?lid=1042851"
 
 
 # Create bot and dispatcher instances
@@ -98,7 +103,7 @@ async def send_signup_message(call: types.CallbackQuery):
 
     # Using f-string to include the REFERRAL_LINK
     await call.message.answer(
-        f"👉 To continue using the bot, register on Pocket Option via my referral link:\n\n"
+        f"👉 To continue using the bot, register on Quotex via my referral link:\n\n"
         f"⚠️ Use {REFERRAL_LINK} only. Accounts created using other links will not be accepted. "
         "After registration, send your ID here by clicking the button '✅ I registered through your link ✅'.",
         reply_markup=referral_keyboard
@@ -115,8 +120,8 @@ async def send_quota_exceeded_message(call: types.CallbackQuery):
 
     await call.message.answer(
         "❌ You've already used all your test signals!\n"
-        "👉 To continue using the bot, register on Pocket Option via my referral link:\n\n"
-        "⚠️ Use **this link** only. Accounts created using other links will not be accepted. "
+        "👉 To continue using the bot, register on Quotex via my referral link:\n\n"
+        f"⚠️ Use {REFERRAL_LINK} only. Accounts created using other links will not be accepted. "
         "After registration, send your ID here by clicking the button '✅ I registered through your link ✅'.",
         reply_markup=referral_keyboard
     )
@@ -146,6 +151,9 @@ async def confirm_registration(call: types.CallbackQuery):
                 # Store user as verified
                 verified_users[user_id] = True
                 await message.answer("Verification successful! You now have full access to the bot.")
+            elif verification_result["status"] == "registered" and not verification_result["deposit"]:
+                # Not enough deposit
+                await message.answer("Please ensure you have a minimum deposit of $50. Then you can access the bot.")
             else:
                 # Not enough deposit or not verified
                 await message.answer("Verification failed. Please ensure you have a minimum deposit of $50.")
@@ -165,28 +173,24 @@ async def back_to_menu(call: types.CallbackQuery):
     await start(call.message)
 
 
-# Currency pair selection with inline buttons
-# @dp.message(Command(commands=['select_pair']))
-# async def select_currency_pair(message: types.Message):
-#     logging.info(f"Selecting currency pair for user {message.from_user.id}")
-    
-#     # Create inline buttons for currency pairs, two per row
-#     buttons = [
-#         InlineKeyboardButton(text=pair, callback_data=pair) for pair in CURRENCY_PAIRS
-#     ]
-    
-#     # Group buttons into pairs
-#     button_pairs = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
-    
-#     # Create a keyboard layout with pairs of buttons
-#     keyboard = InlineKeyboardMarkup(inline_keyboard=button_pairs)
-    
-#     await message.answer("Please select a currency pair:", reply_markup=keyboard)
-
 # Currency pair selection with access control
 @dp.message(Command(commands=['select_pair']))
 async def select_currency_pair(message: types.Message):
     user_id = message.from_user.id
+    current_time = asyncio.get_event_loop().time()  # Get the current time in seconds
+
+    # Check if the user is in cooldown
+    last_access_time = user_last_access_time.get(user_id, 0)
+    if current_time - last_access_time < COOLDOWN_PERIOD:
+        remaining_time = COOLDOWN_PERIOD - (current_time - last_access_time)
+        cooldown_message = await message.answer(f"You can only access the currency pair selection every 5 minutes. Please wait {int(remaining_time)} seconds.")
+        # Wait for 5 seconds before deleting the message
+        await asyncio.sleep(5)
+        
+        # Delete the cooldown message
+        await bot.delete_message(chat_id=message.chat.id, message_id=cooldown_message.message_id)
+        return
+    
     print(f"User ID: {user_id}")
     print(f"User Signal Count: {user_signal_count.get(user_id, 0)}")
     print(f"Is Test Signal: {isTestSignal}")
@@ -206,6 +210,7 @@ async def select_currency_pair(message: types.Message):
         keyboard = InlineKeyboardMarkup(inline_keyboard=button_pairs)
         
         await message.answer("Please select a currency pair:", reply_markup=keyboard)
+        user_last_access_time[user_id] = current_time
     else:
         await message.answer("You are not verified. Please complete the registration with a minimum deposit of $50 to access this feature.")
 
@@ -215,7 +220,10 @@ async def select_currency_pair(message: types.Message):
 @dp.callback_query(lambda call: call.data in CURRENCY_PAIRS)
 async def handle_currency_pair_selection(call: types.CallbackQuery):
     logging.info(f"Trading signal request received for {call.data} from user {call.from_user.id}")
-    
+    current_time = asyncio.get_event_loop().time()  # Get the current time in seconds
+    user_id = call.from_user.id
+    # Update the last access time for the user after they successfully select a pair
+    user_last_access_time[user_id] = current_time
     pair = call.data
     
     # Remove "(OTC)" from the selected pair

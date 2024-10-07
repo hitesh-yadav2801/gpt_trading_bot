@@ -20,7 +20,7 @@ def format_signal(pair, timeframe, moving_average, technical_indicators, signal_
     return (
         f"*{formatted_pair}*\n"
         f"Time: *{timeframe} MIN*\n"
-        f"Broker: *Pocket Options*\n\n"
+        f"Broker: *Quotex*\n\n"
         f"📍 Moving average: *{moving_average}*\n"
         f"📊 Technical indicators: *{technical_indicators}*\n\n"
         f"🤖 Trading signal from bot: *{signal_type.upper()}* {arrow}"
