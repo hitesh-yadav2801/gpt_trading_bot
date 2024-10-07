@@ -33,5 +33,14 @@ class BotMessages:
 
 
 
+
 BotMessages.CONTACT_COMMAND_MESSAGE = BotMessages.CONTACT_COMMAND_MESSAGE.format(MY_USERNAME=BotMessages.MY_USERNAME)
+
+# Currency pairs list
+CURRENCY_PAIRS = [
+    'USD/JPY(OTC)', 'EUR/GBP(OTC)', 'EUR/JPY(OTC)', 'AUD/JPY(OTC)',
+    'EUR/USD(OTC)', 'GBP/USD(OTC)', 'GBP/CHF(OTC)', 'EUR/CAD(OTC)', 
+    'AUD/USD(OTC)', 'USD/CAD(OTC)', 'GBP/CAD(OTC)', 'EUR/CHF(OTC)', 
+    'AUD/CHF(OTC)', 'AUD/CAD(OTC)'
+]
 

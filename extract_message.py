@@ -22,7 +22,7 @@ simulated_response_text = (
     "FTD amount: $0.00\n"
     "FTD date: \n"
     "Count of deposits: 0\n"
-    "Deposits Sum: $ 49.00\n"
+    "Deposits Sum: $ 60.00\n"
     "Sum of bonuses: $0.00\n"
     "Count of bonuses: 0%\n"
     "Commission: $0.00\n"

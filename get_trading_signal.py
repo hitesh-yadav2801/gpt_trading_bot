@@ -5,6 +5,7 @@ from format_signal import format_signal
 from datetime import datetime, timedelta
 
 OPENAI_API_KEY = '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'
+# OPENAI_API_KEY = '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'
 
 # Initialize OpenAI client
 openai_client = OpenAI(api_key=OPENAI_API_KEY)

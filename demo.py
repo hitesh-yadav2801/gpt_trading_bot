@@ -11,20 +11,26 @@ from constants import BotMessages
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from constants import CURRENCY_PAIRS
 from user_data_manager import load_user_data, save_user_data
-
 from get_trading_signal import get_trading_signal
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import PyMongoError
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
 API_TOKEN = '7487400596:AAHuNmLoSN3mNo7IbShJNsr0It3Hq1xGBfg'
 
+# MongoDB Setup
+mongo_client = AsyncIOMotorClient("mongodb://localhost:27017/trading_bot")
+db = mongo_client["trading_bot"]
+users_collection = db["trading_bot_users"]
+
 # Set maximum allowed test signals
 MAX_TEST_SIGNALS = 1
 
 # In-memory dictionary to track test signal usage by each user (could be replaced by database)
-user_signal_count = {}
-user_verification_data = {}
+# user_signal_count = {}
+# user_verification_data = {}
 isTestSignal = False
 
 # Dictionary to track the last time each user accessed the select_pair command
@@ -45,7 +51,27 @@ dp = Dispatcher(storage=MemoryStorage())
 # Command handler for /start with inline buttons
 @dp.message(Command(commands=['start']))
 async def start(message: types.Message):
-    logging.info(f"Start command received from user {message.from_user.id}")
+    user_id = message.from_user.id
+    print(f"My User ID: {user_id}")
+    logging.info(f"Start command received from user {user_id}")
+    
+    # Check if the user exists in the database
+    user = await users_collection.find_one({"telegram_id": user_id})
+    
+    # If the user doesn't exist, add them to the database
+    if not user:
+        try:
+            await users_collection.insert_one({
+                "telegram_id": user_id,
+                "user_signal_count": 0,
+                "is_registered": False,
+                "has_deposited": False
+            })
+            logging.info(f"User {user_id} added to the database.")
+        except PyMongoError as e:
+            logging.error(f"Error adding user to the database: {e}")
+            await message.answer("An error occurred while processing your request. Please try again later.")
+            return
     
     # Create inline keyboard
     inline_keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -54,7 +80,6 @@ async def start(message: types.Message):
         [InlineKeyboardButton(text='📞 Contact Hitesh ❓', callback_data='contact_hitesh')]
     ])
 
-    
     # Send start message with inline keyboard
     await message.answer(BotMessages.START_COMMAND_MESSAGE, reply_markup=inline_keyboard)
 
@@ -67,16 +92,19 @@ async def handle_inline_buttons(call: types.CallbackQuery):
 
     # Test Signal button logic
     if call.data == 'test_signal':
-        print('user_signal_count: ', user_signal_count.get(user_id))
-        if user_signal_count.get(user_id, 0) < MAX_TEST_SIGNALS:
+        user = await users_collection.find_one({"telegram_id": user_id})
+        if user and user.get('user_signal_count', 0) < MAX_TEST_SIGNALS:
             # Provide test signal and increment count
-            user_signal_count[user_id] = user_signal_count.get(user_id, 0) + 1
+            await users_collection.update_one(
+                {"telegram_id": user_id},
+                {"$inc": {"user_signal_count": 1}}
+            )
             isTestSignal = True
-            await select_currency_pair(call.message)
-            # await call.message.answer(f"Test signal #{user_signal_count[user_id]}: Your trading signal here...")
+            # print('user id is : ', call.message.from_user.id)
+            print('user id is : ', call.message.from_user.id)
+            await select_currency_pair(call.message, user_id)
         else:
             # Notify user they have exceeded the limit and must sign up
-            print('Quota exceeded')
             await send_quota_exceeded_message(call)
     
     elif call.data == 'access_bot':
@@ -128,35 +156,35 @@ async def confirm_registration(call: types.CallbackQuery):
     user_id = call.from_user.id
     await call.message.answer("Please provide your registration ID for verification.")
 
-    # Register a handler to receive the user's registration ID
     @dp.message()
     async def receive_user_id(message: types.Message):
         user_id_text = message.text.strip()
         print(f"User ID: {user_id_text}")
 
-        # Verify user registration and deposit using the check_user_id function
         try:
-            verification_result = await check_user_id(user_id_text)  # Ensure you're passing the correct user ID
-            print('verification_result is: ', verification_result)
+            verification_result = await check_user_id(user_id_text)
             if verification_result["status"] == "not_registered":
                 await message.answer("User not found. Please register using the provided link.")
             elif verification_result["status"] == "registered" and verification_result["deposit"]:
-                # Store user as verified
-                user_verification_data[user_id] = True
+                await users_collection.update_one(
+                    {"telegram_id": user_id},
+                    {"$set": {"is_registered": True, "has_deposited": True}},
+                    upsert=True
+                )
                 await message.answer("Verification successful! You now have full access to the bot.")
             elif verification_result["status"] == "registered" and not verification_result["deposit"]:
-                # Not enough deposit
+                await users_collection.update_one(
+                    {"telegram_id": user_id},
+                    {"$set": {"is_registered": True, "has_deposited": False}},
+                    upsert=True
+                )
                 await message.answer("Please ensure you have a minimum deposit of $50. Then you can access the bot.")
             else:
-                # Not enough deposit or not verified
                 await message.answer("Verification failed. Please ensure you have a minimum deposit of $50.")
         
         except Exception as e:
             logging.error(f"Error verifying user: {e}")
             await message.answer("An error occurred during verification. Please try again.")
-
-        # Remove the message handler after receiving the user ID
-        # dp.message_handlers.unregister(receive_user_id)
 
 
 
@@ -168,8 +196,10 @@ async def back_to_menu(call: types.CallbackQuery):
 
 # Currency pair selection with access control
 @dp.message(Command(commands=['select_pair']))
-async def select_currency_pair(message: types.Message):
-    user_id = message.from_user.id
+async def select_currency_pair(message: types.Message, user_id: int = None):
+    if user_id is None:
+        user_id = message.from_user.id  # Get user_id from the message if not provided
+
     current_time = asyncio.get_event_loop().time()  # Get the current time in seconds
 
     # Check if the user is in cooldown
@@ -177,35 +207,31 @@ async def select_currency_pair(message: types.Message):
     if current_time - last_access_time < COOLDOWN_PERIOD:
         remaining_time = COOLDOWN_PERIOD - (current_time - last_access_time)
         cooldown_message = await message.answer(f"You can only access the currency pair selection every 5 minutes. Please wait {int(remaining_time)} seconds.")
-        # Wait for 5 seconds before deleting the message
         await asyncio.sleep(5)
-        
-        # Delete the cooldown message
         await bot.delete_message(chat_id=message.chat.id, message_id=cooldown_message.message_id)
         return
-    
-    print(f"User ID: {user_id}")
-    print(f"User Signal Count: {user_signal_count.get(user_id, 0)}")
-    print(f"Is Test Signal: {isTestSignal}")
-    # Check if user is verified
-    if user_verification_data.get(user_id, False) or (user_signal_count.get(user_id, 0) < MAX_TEST_SIGNALS and isTestSignal):
+
+    user = await users_collection.find_one({"telegram_id": user_id})
+    print('user type: ', type(user))
+    print('user details: ', user)
+
+    if user and (user.get("is_registered") or (user.get("user_signal_count", 0) < MAX_TEST_SIGNALS and isTestSignal)):
         logging.info(f"Selecting currency pair for user {user_id}")
-        
+
         # Create inline buttons for currency pairs, two per row
         buttons = [
             InlineKeyboardButton(text=pair, callback_data=pair) for pair in CURRENCY_PAIRS
         ]
-        
+
         # Group buttons into pairs
         button_pairs = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
-        
-        # Create a keyboard layout with pairs of buttons
+
         keyboard = InlineKeyboardMarkup(inline_keyboard=button_pairs)
-        
         await message.answer("Please select a currency pair:", reply_markup=keyboard)
-        # user_last_access_time[user_id] = current_time
     else:
         await message.answer("You are not verified. Please complete the registration with a minimum deposit of $50 to access this feature.")
+
+
 
 
 
