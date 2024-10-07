@@ -4,6 +4,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 from openai import OpenAI
 import logging
+from extract_message import check_user_id, client
 from fetch_forex_data import fetch_and_save_forex_data
 from format_signal import format_signal
 from constants import BotMessages 
@@ -21,6 +22,8 @@ MAX_TEST_SIGNALS = 1
 
 # In-memory dictionary to track test signal usage by each user (could be replaced by database)
 user_signal_count = {}
+verified_users = {}
+isTestSignal = False
 
 # Referral link (replace with your actual link)
 REFERRAL_LINK = "https://pocket1.click/smart/QLmdLojLR4E7Et"
@@ -62,22 +65,28 @@ async def start(message: types.Message):
 @dp.callback_query(lambda call: call.data in ['access_bot', 'test_signal', 'contact_hitesh'])
 async def handle_inline_buttons(call: types.CallbackQuery):
     user_id = call.from_user.id
+    global isTestSignal
 
     # Test Signal button logic
     if call.data == 'test_signal':
+        print('user_signal_count: ', user_signal_count.get(user_id))
         if user_signal_count.get(user_id, 0) < MAX_TEST_SIGNALS:
             # Provide test signal and increment count
             user_signal_count[user_id] = user_signal_count.get(user_id, 0) + 1
-            await call.message.answer(f"Test signal #{user_signal_count[user_id]}: Your trading signal here...")
+            isTestSignal = True
+            await select_currency_pair(call.message)
+            # await call.message.answer(f"Test signal #{user_signal_count[user_id]}: Your trading signal here...")
         else:
             # Notify user they have exceeded the limit and must sign up
+            print('Quota exceeded')
             await send_quota_exceeded_message(call)
     
     elif call.data == 'access_bot':
         await send_signup_message(call)
     
     elif call.data == 'contact_hitesh':
-        await call.message.answer("You can contact Hitesh via this Telegram: @hitesh...")
+        await call.message.answer(BotMessages.CONTACT_COMMAND_MESSAGE)
+        
 
 
 async def send_signup_message(call: types.CallbackQuery):
@@ -114,12 +123,40 @@ async def send_quota_exceeded_message(call: types.CallbackQuery):
 
 
 # Handle registration confirmation
+# from extract_message import check_user_id  # Import the function from the file where it's defined
+
 @dp.callback_query(lambda call: call.data == 'confirm_registration')
 async def confirm_registration(call: types.CallbackQuery):
-    await call.message.answer(
-        "Please provide your registration ID for verification. "
-        "The bot will verify your registration and give you access."
-    )
+    user_id = call.from_user.id
+    await call.message.answer("Please provide your registration ID for verification.")
+
+    # Register a handler to receive the user's registration ID
+    @dp.message()
+    async def receive_user_id(message: types.Message):
+        user_id_text = message.text.strip()
+        print(f"User ID: {user_id_text}")
+
+        # Verify user registration and deposit using the check_user_id function
+        try:
+            verification_result = await check_user_id(user_id_text)  # Ensure you're passing the correct user ID
+            print('verification_result is: ', verification_result)
+            if verification_result["status"] == "not_registered":
+                await message.answer("User not found. Please register using the provided link.")
+            elif verification_result["status"] == "registered" and verification_result["deposit"]:
+                # Store user as verified
+                verified_users[user_id] = True
+                await message.answer("Verification successful! You now have full access to the bot.")
+            else:
+                # Not enough deposit or not verified
+                await message.answer("Verification failed. Please ensure you have a minimum deposit of $50.")
+        
+        except Exception as e:
+            logging.error(f"Error verifying user: {e}")
+            await message.answer("An error occurred during verification. Please try again.")
+
+        # Remove the message handler after receiving the user ID
+        # dp.message_handlers.unregister(receive_user_id)
+
 
 
 # Handle back to menu
@@ -129,24 +166,48 @@ async def back_to_menu(call: types.CallbackQuery):
 
 
 # Currency pair selection with inline buttons
+# @dp.message(Command(commands=['select_pair']))
+# async def select_currency_pair(message: types.Message):
+#     logging.info(f"Selecting currency pair for user {message.from_user.id}")
+    
+#     # Create inline buttons for currency pairs, two per row
+#     buttons = [
+#         InlineKeyboardButton(text=pair, callback_data=pair) for pair in CURRENCY_PAIRS
+#     ]
+    
+#     # Group buttons into pairs
+#     button_pairs = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+    
+#     # Create a keyboard layout with pairs of buttons
+#     keyboard = InlineKeyboardMarkup(inline_keyboard=button_pairs)
+    
+#     await message.answer("Please select a currency pair:", reply_markup=keyboard)
+
+# Currency pair selection with access control
 @dp.message(Command(commands=['select_pair']))
 async def select_currency_pair(message: types.Message):
-    logging.info(f"Selecting currency pair for user {message.from_user.id}")
-    
-    # Create inline buttons for currency pairs, two per row
-    buttons = [
-        InlineKeyboardButton(text=pair, callback_data=pair) for pair in CURRENCY_PAIRS
-    ]
-    
-    # Group buttons into pairs
-    button_pairs = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
-    
-    # Create a keyboard layout with pairs of buttons
-    keyboard = InlineKeyboardMarkup(inline_keyboard=button_pairs)
-    
-    await message.answer("Please select a currency pair:", reply_markup=keyboard)
-
-
+    user_id = message.from_user.id
+    print(f"User ID: {user_id}")
+    print(f"User Signal Count: {user_signal_count.get(user_id, 0)}")
+    print(f"Is Test Signal: {isTestSignal}")
+    # Check if user is verified
+    if verified_users.get(user_id, False) or (user_signal_count.get(user_id, 0) < MAX_TEST_SIGNALS and isTestSignal):
+        logging.info(f"Selecting currency pair for user {user_id}")
+        
+        # Create inline buttons for currency pairs, two per row
+        buttons = [
+            InlineKeyboardButton(text=pair, callback_data=pair) for pair in CURRENCY_PAIRS
+        ]
+        
+        # Group buttons into pairs
+        button_pairs = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+        
+        # Create a keyboard layout with pairs of buttons
+        keyboard = InlineKeyboardMarkup(inline_keyboard=button_pairs)
+        
+        await message.answer("Please select a currency pair:", reply_markup=keyboard)
+    else:
+        await message.answer("You are not verified. Please complete the registration with a minimum deposit of $50 to access this feature.")
 
 
 
