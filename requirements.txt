@@ -1,6 +1,6 @@
 aiogram==3.0.0b7
 asyncio
-dotenv
+python-dotenv
 logging
 motor==2.5.1
 pandas==2.1.1
