@@ -8,3 +8,4 @@ openai
 pymongo==4.9.2
 requests==2.32.3
 telethon==1.37.0
+flask==3.0.3

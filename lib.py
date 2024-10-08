@@ -6,6 +6,7 @@ import telethon
 import pymongo
 import aiogram
 import asyncio
+import flask
 
 
 print(f"Pandas version: {pd.__version__}")
@@ -15,4 +16,5 @@ print(f"Motor version: {motor.version}")
 print(f"Telethon version: {telethon.__version__}")
 print(f"Pymongo version: {pymongo.__version__}")
 print(f"aiogram version: {aiogram.__version__}")
-print(f"Asyncio version: {asyncio.__version__}")
+# print(f"Asyncio version: {asyncio.__version__}")
+print(f"Flask version: {flask.__version__}")
