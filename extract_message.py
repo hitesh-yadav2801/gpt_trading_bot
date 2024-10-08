@@ -3,8 +3,10 @@ from telethon import TelegramClient, events
 import asyncio
 import re  # For regex extraction
 
-api_id = '20657390'
-api_hash = '39a41e259c349930c1898ce919a67397'
+# api_id = '20657390'
+# api_hash = '39a41e259c349930c1898ce919a67397'
+api_id = '23287374'
+api_hash = '37a77bd1ce4dbdfa9014b6ba189e500f'
 bot_username = '@QuotexPartnerBot'  # The username of the Pocket Option bot
 
 # Initialize the Telegram client

@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from openai import OpenAI
 import logging
 from extract_message import check_user_id, client
-from fetch_forex_data import fetch_and_save_forex_data
+from fetch_forex_data import fetch_forex_data
 from format_signal import format_signal
 from constants import BotMessages 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton

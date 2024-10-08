@@ -1,6 +1,6 @@
 import json
 from openai import OpenAI
-from fetch_forex_data import fetch_and_save_forex_data
+from fetch_forex_data import fetch_forex_data
 from format_signal import format_signal
 from datetime import datetime, timedelta
 
@@ -20,7 +20,7 @@ async def get_trading_signal(pair):
 
     # Fetch live Forex data
     from_currency, to_currency = pair[:3], pair[3:]
-    market_data = fetch_and_save_forex_data(from_currency, to_currency, formatted_date, '5min')
+    market_data = fetch_forex_data(from_currency, to_currency, formatted_date, '5min')
 
     print(market_data)
     

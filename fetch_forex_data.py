@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 from pprint import pprint
 
-def fetch_and_save_forex_data(from_currency, to_currency, start_date, resample_freq):
+def fetch_forex_data(from_currency, to_currency, start_date, resample_freq):
     # Define the headers for the request
     headers = {
         'Content-Type': 'application/json'
@@ -29,6 +29,8 @@ def fetch_and_save_forex_data(from_currency, to_currency, start_date, resample_f
 
         # Create a DataFrame from the response data
         df = pd.DataFrame.from_dict(data)
+        if len(df) > 100:
+            df = df.tail(100)
         
         # Optionally print the first 3 entries for inspection
         # pprint(data[:3])
@@ -43,10 +45,10 @@ def fetch_and_save_forex_data(from_currency, to_currency, start_date, resample_f
         return None
 
 # Example usage: call the function and get the data
-forex_data = fetch_and_save_forex_data('EUR', 'USD', '2024-10-04', '5min')
+# forex_data = fetch_and_save_forex_data('EUR', 'USD', '2024-10-04', '5min')
 
-# Check and print the fetched DataFrame
-if forex_data is not None:
-    print(forex_data.head())  # Print the first few rows
-else:
-    print("No data fetched.")
+# # Check and print the fetched DataFrame
+# if forex_data is not None:
+#     print(forex_data.head())  # Print the first few rows
+# else:
+#     print("No data fetched.")
