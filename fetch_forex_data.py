@@ -1,7 +1,12 @@
-from secret import Secret  # Ensure Secret is properly configured with an API key
 import requests
 import pandas as pd
 from pprint import pprint
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+Tiingo_API_Key = os.environ.get('TIINGO_API_KEY')
 
 def fetch_forex_data(from_currency, to_currency, start_date, resample_freq):
     # Define the headers for the request
@@ -14,7 +19,7 @@ def fetch_forex_data(from_currency, to_currency, start_date, resample_freq):
         "tickers": f"{from_currency}{to_currency}",
         "startDate": start_date,
         "resampleFreq": resample_freq,
-        "token": Secret.api_key  # Use your actual API key
+        "token": Tiingo_API_Key  # Use your actual API key
     }
 
     # Define the base URL

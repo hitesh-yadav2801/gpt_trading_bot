@@ -3,8 +3,12 @@ from openai import OpenAI
 from fetch_forex_data import fetch_forex_data
 from format_signal import format_signal
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
 
-OPENAI_API_KEY = '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'
+load_dotenv()
+
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 # OPENAI_API_KEY = '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'
 
 # Initialize OpenAI client

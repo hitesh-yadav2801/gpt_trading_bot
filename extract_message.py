@@ -2,18 +2,20 @@ import logging
 from telethon import TelegramClient, events
 import asyncio
 import re  # For regex extraction
+from dotenv import load_dotenv
+import os
 
-# api_id = '20657390'
-# api_hash = '39a41e259c349930c1898ce919a67397'
-api_id = '23287374'
-api_hash = '37a77bd1ce4dbdfa9014b6ba189e500f'
+load_dotenv()
+
+api_id = os.environ.get('MY_TELEGRAM_API_ID')
+api_hash = os.environ.get('MY_TELEGRAM_API_HASH')
 bot_username = '@QuotexPartnerBot'  # The username of the Pocket Option bot
 
 # Initialize the Telegram client
 client = TelegramClient('session_name', api_id, api_hash)
 
 # Simulated bot response (for testing)
-SIMULATE_RESPONSE = True  # Set to False for actual bot interaction
+SIMULATE_RESPONSE = False  # Set to False for actual bot interaction
 simulated_response_text = (
     "UID: 85614523\n"
     "Reg date: 2024-10-05\n"

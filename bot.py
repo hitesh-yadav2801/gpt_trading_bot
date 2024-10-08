@@ -11,11 +11,15 @@ from constants import BotMessages
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from constants import CURRENCY_PAIRS
 from get_trading_signal import get_trading_signal
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
-API_TOKEN = '7487400596:AAHuNmLoSN3mNo7IbShJNsr0It3Hq1xGBfg'
+API_TOKEN = os.environ.get("BOT_API_TOKEN")
 
 # Set maximum allowed test signals
 MAX_TEST_SIGNALS = 1
