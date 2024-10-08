@@ -2,7 +2,7 @@ aiogram==3.13.1
 asyncio
 python-dotenv
 logging
-motor==2.5.1
+motor==3.6.0
 pandas==2.2.3
 openai
 pymongo==4.9.2
