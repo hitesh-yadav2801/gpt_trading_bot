@@ -12,16 +12,18 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
 from dotenv import load_dotenv
 import os
+
+
 load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
-API_TOKEN = '7487400596:AAHuNmLoSN3mNo7IbShJNsr0It3Hq1xGBfg'
+API_TOKEN = os.environ.get("BOT_API_TOKEN")
 
 # MongoDB Setup
-mongo_client = AsyncIOMotorClient("mongodb://localhost:27017/trading_bot")
-# mongo_client = AsyncIOMotorClient(os.getenv("MONGO_DB_URL"))
+# mongo_client = AsyncIOMotorClient("mongodb://localhost:27017/trading_bot")
+mongo_client = AsyncIOMotorClient(os.getenv("MONGO_DB_URL"), tlsAllowInvalidCertificates=True)
 db = mongo_client["trading_bot"]
 users_collection = db["trading_bot_users"]
 
@@ -93,7 +95,7 @@ async def handle_inline_buttons(call: types.CallbackQuery):
     # Test Signal button logic
     if call.data == 'test_signal':
         user = await users_collection.find_one({"telegram_id": user_id})
-        if user and user.get('user_signal_count', 0) < MAX_TEST_SIGNALS:
+        if user and user.get('user_signal_count', 0) <= MAX_TEST_SIGNALS:
             # Provide test signal and increment count
             await users_collection.update_one(
                 {"telegram_id": user_id},
@@ -215,7 +217,7 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
     print('user type: ', type(user))
     print('user details: ', user)
 
-    if user and (user.get("is_registered") or (user.get("user_signal_count", 0) < MAX_TEST_SIGNALS and isTestSignal)):
+    if user and (user.get("is_registered") or (user.get("user_signal_count", 0) <= MAX_TEST_SIGNALS and isTestSignal)):
         logging.info(f"Selecting currency pair for user {user_id}")
 
         # Create inline buttons for currency pairs, two per row
