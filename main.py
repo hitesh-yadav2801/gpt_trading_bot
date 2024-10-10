@@ -15,7 +15,7 @@ import os
 from keep_alive import keep_alive
 
 
-keep_alive()
+# keep_alive()
 load_dotenv()
 
 # Set up logging
@@ -182,7 +182,7 @@ async def confirm_registration(call: types.CallbackQuery):
                     {"$set": {"is_registered": True, "has_deposited": False}},
                     upsert=True
                 )
-                await message.answer("Please ensure you have a minimum deposit of $50. Then you can access the bot.")
+                await message.answer("Please ensure you have a minimum deposit of $50 and again check with your ID. Then you can access the bot.")
             else:
                 await message.answer("Verification failed. Please ensure you have a minimum deposit of $50.")
         
@@ -219,7 +219,7 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
     print('user type: ', type(user))
     print('user details: ', user)
 
-    if user and (user.get("is_registered") or (user.get("user_signal_count", 0) <= MAX_TEST_SIGNALS and isTestSignal)):
+    if user and ((user.get("is_registered") and user.get("has_deposited")) or (user.get("user_signal_count", 0) <= MAX_TEST_SIGNALS and isTestSignal)):
         logging.info(f"Selecting currency pair for user {user_id}")
 
         # Create inline buttons for currency pairs, two per row
