@@ -9,15 +9,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-# OPENAI_API_KEY = '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'
 
 # Initialize OpenAI client
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+def load_prompt(file_path):
+    """
+    Function to load prompt from a file.
+    """
+    with open(file_path, 'r') as file:
+        return file.read()
 
 async def get_trading_signal(pair):
     """
     Function to fetch a trading signal using OpenAI/ChatGPT and live market data.
     """
+
+    prompt_template = load_prompt('prompt.txt')
+    # print(prompt_template)
     # Calculate the date for three days ago
     three_days_ago = datetime.now() - timedelta(days=3)
     formatted_date = three_days_ago.strftime('%Y-%m-%d')  # Format the date as 'YYYY-MM-DD'
@@ -30,11 +39,13 @@ async def get_trading_signal(pair):
     
     # Ensure data was successfully retrieved
     if market_data is not None:
+        formatted_prompt = prompt_template.format(pair=pair, market_data=market_data)
+
         # Using OpenAI to analyze market data and give signal in JSON format
         completion = openai_client.chat.completions.create(
             model="gpt-3.5-turbo-0125",
             messages=[
-                {"role": "system", "content": f"Analyze the following market data for {pair} and provide a JSON object with the keys: 'signal_type', 'moving_average', and 'technical_indicators'. For example: {{'signal_type': 'Buy', 'moving_average': 'Neutral', 'technical_indicators': 'Sell'}}. If market potential is high then use Strong Buy or Buy. If market potential is low then use Strong Sell or Sell. Here is the data: {market_data}. Don't give unnecessary information. Just provide the JSON object."},
+                {"role": "system", "content": formatted_prompt},
                 {"role": "user", "content": "What is the trading signal?"}
             ]
         )
