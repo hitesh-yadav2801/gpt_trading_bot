@@ -25,7 +25,7 @@ API_TOKEN = os.environ.get("BOT_API_TOKEN")
 
 # MongoDB Setup
 # mongo_client = AsyncIOMotorClient("mongodb://localhost:27017/trading_bot")
-mongo_client = AsyncIOMotorClient(os.getenv("MONGO_DB_URL"), tlsAllowInvalidCertificates=True)
+mongo_client = AsyncIOMotorClient(os.environ.get("MONGO_DB_URL"), tlsAllowInvalidCertificates=True)
 db = mongo_client["trading_bot"]
 users_collection = db["trading_bot_users"]
 
