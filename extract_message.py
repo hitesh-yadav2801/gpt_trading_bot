@@ -57,16 +57,17 @@ async def check_user_id(user_id):
             response_text = simulated_response_text
             await process_response(response_text, response_future)
 
-        # Wait for the future to complete and return the result
-        return response_future.result()
-
-    except asyncio.TimeoutError:
-        print("Timeout while waiting for the response.")
-        return {"status": "error", "message": "Timeout waiting for response from bot."}
+        # Wait for the future to complete with a timeout (e.g., 30 seconds)
+        try:
+            return await asyncio.wait_for(response_future, timeout=30)
+        except asyncio.TimeoutError:
+            print("Timeout while waiting for the response.")
+            return {"status": "error", "message": "Timeout waiting for response from bot."}
 
     except Exception as e:
         logging.error(f"Error verifying user: {e}")
         return {"status": "error", "message": str(e)}
+
 
 
 async def process_response(response_text, response_future):
@@ -78,6 +79,7 @@ async def process_response(response_text, response_future):
 
     # Check if the user is not found
     if "was not found" in response_text.lower():
+        print(response_text)
         response_future.set_result({"status": "not_registered"})
         return
 
@@ -85,7 +87,6 @@ async def process_response(response_text, response_future):
     deposit_match = re.search(r"Deposits Sum:\s*\$\s*(\d+\.?\d*)", response_text)
     print(f"Deposit match: {deposit_match}")
 
-    result = None
     if deposit_match:
         deposit_amount = float(deposit_match.group(1))  # Extracted deposit amount as a float
         print(f"Deposit amount: {deposit_amount}")
@@ -103,8 +104,10 @@ async def process_response(response_text, response_future):
         print("No deposit information found.")
         result = {"status": "registered", "deposit": False}
 
-    # Set the result for the future
-    response_future.set_result(result)
+    # Ensure the future is set with a result
+    if not response_future.done():
+        response_future.set_result(result)
+
 
 # Example usage (commented out, this would be run as part of your program)
 # asyncio.run(check_user_id(123456789))

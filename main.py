@@ -167,6 +167,7 @@ async def confirm_registration(call: types.CallbackQuery):
 
         try:
             verification_result = await check_user_id(user_id_text)
+            print('verification_result', verification_result)
             if verification_result["status"] == "not_registered":
                 await message.answer("User not found. Please register using the provided link.")
             elif verification_result["status"] == "registered" and verification_result["deposit"]:
