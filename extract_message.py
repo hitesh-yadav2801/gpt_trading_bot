@@ -52,6 +52,7 @@ async def check_user_id(user_id):
             async def handler(event):
                 response_text = event.raw_text
                 await process_response(response_text, response_future)
+                # client.remove_event_handler(handler)
         else:
             # Simulate a bot response (for testing)
             response_text = simulated_response_text
@@ -67,6 +68,9 @@ async def check_user_id(user_id):
     except Exception as e:
         logging.error(f"Error verifying user: {e}")
         return {"status": "error", "message": str(e)}
+    
+    # finally:
+    #     await client.disconnect()
 
 
 

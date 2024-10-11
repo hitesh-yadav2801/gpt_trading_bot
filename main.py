@@ -81,7 +81,7 @@ async def start(message: types.Message):
     inline_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='🔓 Get access to bot 🤖', callback_data='access_bot')],
         [InlineKeyboardButton(text='📈 Get a test signal 🆓', callback_data='test_signal')],
-        [InlineKeyboardButton(text='📞 Contact Hitesh ❓', callback_data='contact_hitesh')]
+        [InlineKeyboardButton(text='📞 Contact Genuine Trader ❓', callback_data='contact_genuine')]
     ])
 
     # Send start message with inline keyboard
@@ -89,7 +89,7 @@ async def start(message: types.Message):
 
 
 # Handle inline button callbacks
-@dp.callback_query(lambda call: call.data in ['access_bot', 'test_signal', 'contact_hitesh'])
+@dp.callback_query(lambda call: call.data in ['access_bot', 'test_signal', 'contact_genuine'])
 async def handle_inline_buttons(call: types.CallbackQuery):
     user_id = call.from_user.id
     global isTestSignal
@@ -114,7 +114,7 @@ async def handle_inline_buttons(call: types.CallbackQuery):
     elif call.data == 'access_bot':
         await send_signup_message(call)
     
-    elif call.data == 'contact_hitesh':
+    elif call.data == 'contact_genuine':
         await call.message.answer(BotMessages.CONTACT_COMMAND_MESSAGE)
         
 
@@ -158,6 +158,12 @@ async def send_quota_exceeded_message(call: types.CallbackQuery):
 @dp.callback_query(lambda call: call.data == 'confirm_registration')
 async def confirm_registration(call: types.CallbackQuery):
     user_id = call.from_user.id
+    # check if user already registered and has deposited
+    user = await users_collection.find_one({"telegram_id": user_id})
+    if user and user.get('is_registered', False) and user.get('has_deposited', False):
+        await call.message.answer("You have already registered and deposited. You don't need to verify again.")
+        return
+    
     await call.message.answer("Please provide your registration ID for verification.")
 
     @dp.message()

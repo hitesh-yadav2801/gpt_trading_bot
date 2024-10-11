@@ -1,7 +1,7 @@
 # constants.py
 
 class BotMessages:
-    MY_USERNAME = "@noah_2_8"
+    MY_USERNAME = "@Genuinetrad"
 
     START_COMMAND_MESSAGE = (
         "👋🤖 Hi, are you ready to get a unique trading robot based on artificial "
@@ -28,7 +28,7 @@ class BotMessages:
     CONTACT_COMMAND_MESSAGE = (
     "📣 Have questions or looking to take your trading to the next level? 🏆\n\n"
     "🔑 Unlock exclusive insights in my PRIVATE channel, where I personally provide trading signals! 📊\n\n"
-    "💬 Feel free to message me directly at {MY_USERNAME} and get started on your trading journey today! 🚀"
+    "💬 Feel free to message me directly at Genuine Trader {MY_USERNAME} and get started on your trading journey today! 🚀"
     )
 
 
