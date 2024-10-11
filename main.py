@@ -3,7 +3,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 import logging
-from extract_message import check_user_id
+# from extract_message import check_user_id
 from constants import BotMessages 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from constants import CURRENCY_PAIRS
@@ -12,8 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
 from dotenv import load_dotenv
 import os
-from keep_alive import keep_alive
-
+from verify_user import check_user_id
 
 # keep_alive()
 load_dotenv()
@@ -56,6 +55,7 @@ dp = Dispatcher(storage=MemoryStorage())
 @dp.message(Command(commands=['start']))
 async def start(message: types.Message):
     user_id = message.from_user.id
+    name = f"{message.from_user.first_name} {message.from_user.last_name or ''}".strip()
     print(f"My User ID: {user_id}")
     logging.info(f"Start command received from user {user_id}")
     
@@ -69,7 +69,9 @@ async def start(message: types.Message):
                 "telegram_id": user_id,
                 "user_signal_count": 0,
                 "is_registered": False,
-                "has_deposited": False
+                "has_deposited": False,
+                "name" : name,
+                "username" : message.from_user.username
             })
             logging.info(f"User {user_id} added to the database.")
         except PyMongoError as e:
@@ -158,35 +160,38 @@ async def send_quota_exceeded_message(call: types.CallbackQuery):
 @dp.callback_query(lambda call: call.data == 'confirm_registration')
 async def confirm_registration(call: types.CallbackQuery):
     user_id = call.from_user.id
+    print('My User ID: ', user_id)
     # check if user already registered and has deposited
     user = await users_collection.find_one({"telegram_id": user_id})
-    if user and user.get('is_registered', False) and user.get('has_deposited', False):
-        await call.message.answer("You have already registered and deposited. You don't need to verify again.")
-        return
+    # if user and user.get('is_registered', False) and user.get('has_deposited', False):
+    #     await call.message.answer("You have already registered and deposited. You don't need to verify again.")
+    #     return
     
     await call.message.answer("Please provide your registration ID for verification.")
 
     @dp.message()
     async def receive_user_id(message: types.Message):
         user_id_text = message.text.strip()
-        print(f"User ID: {user_id_text}")
+        waiting_message = await message.answer("⏳ Please wait while we verify your ID...")
+        print(f"Quotex User ID: {user_id_text}")
 
         try:
-            verification_result = await check_user_id(user_id_text)
+            verification_result = await check_user_id(user_id_text, call.from_user.id)
+            await waiting_message.delete()
             print('verification_result: ', verification_result)
             if verification_result["status"] == "not_registered":
                 await message.answer("User not found. Please register using the provided link.")
             elif verification_result["status"] == "registered" and verification_result["deposit"]:
                 await users_collection.update_one(
                     {"telegram_id": user_id},
-                    {"$set": {"is_registered": True, "has_deposited": True}},
+                    {"$set": {"is_registered": True, "has_deposited": True, "quotex_id": user_id_text}},
                     upsert=True
                 )
                 await message.answer("Verification successful! You now have full access to the bot.")
             elif verification_result["status"] == "registered" and not verification_result["deposit"]:
                 await users_collection.update_one(
                     {"telegram_id": user_id},
-                    {"$set": {"is_registered": True, "has_deposited": False}},
+                    {"$set": {"is_registered": True, "has_deposited": False, "quotex_id": user_id_text}},
                     upsert=True
                 )
                 await message.answer("Please ensure you have a minimum deposit of $50 and again check with your ID. Then you can access the bot.")
@@ -212,7 +217,7 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
         user_id = message.from_user.id  # Get user_id from the message if not provided
 
     current_time = asyncio.get_event_loop().time()  # Get the current time in seconds
-
+    await users_collection.update_one({"telegram_id": user_id}, {"$set": {"username": message.from_user.username, "name": f"{message.from_user.first_name} {message.from_user.last_name or ''}".strip()}})
     # Check if the user is in cooldown
     last_access_time = user_last_access_time.get(user_id, 0)
     if current_time - last_access_time < COOLDOWN_PERIOD:

@@ -26,7 +26,7 @@ simulated_response_text = (
     "FTD amount: $0.00\n"
     "FTD date: \n"
     "Count of deposits: 0\n"
-    "Deposits Sum: $ 60.00\n"
+    "Deposits Sum: $ 16,501.00\n"
     "Sum of bonuses: $0.00\n"
     "Count of bonuses: 0%\n"
     "Commission: $0.00\n"
@@ -34,9 +34,10 @@ simulated_response_text = (
     "Link type: Use a universal Smart-Link\n"
     "Link: https://pocket1.click/smart/QLmdLojLR4E7Et"
 )
+print('initialized')
 
 
-async def check_user_id(user_id):
+async def check_user_id(user_id, telegram_user_id):
     try:
         await client.start()
 
@@ -50,9 +51,11 @@ async def check_user_id(user_id):
             # Real bot interaction: event handler for incoming messages
             @client.on(events.NewMessage(chats=bot_username, incoming=True))
             async def handler(event):
+                print("My event sender ID:", event.sender_id)
+                print('Received message:', event.raw_text)
                 response_text = event.raw_text
                 await process_response(response_text, response_future)
-                # client.remove_event_handler(handler)
+                    # client.remove_event_handler(handler)
         else:
             # Simulate a bot response (for testing)
             response_text = simulated_response_text
@@ -75,7 +78,7 @@ async def check_user_id(user_id):
 
 
 async def process_response(response_text, response_future):
-    print("Processing response text:", response_text)
+    # print("Processing response text:", response_text)
 
     # Check if the future is already set to avoid InvalidStateError
     if response_future.done():
@@ -83,16 +86,17 @@ async def process_response(response_text, response_future):
 
     # Check if the user is not found
     if "was not found" in response_text.lower():
-        print(response_text)
+        print('User not found:', response_text)
         response_future.set_result({"status": "not_registered"})
         return
 
     # Extract the **Deposits Sum** field using regex
-    deposit_match = re.search(r"Deposits Sum:\s*\$\s*(\d+\.?\d*)", response_text)
+    deposit_match = re.search(r"Deposits Sum:\s*\$\s*([\d,]+\.\d+)", response_text)
+    # deposit_match = re.search(r"Deposits Sum:\s*\$\s*(\d+\.?\d*)", response_text)
     print(f"Deposit match: {deposit_match}")
 
     if deposit_match:
-        deposit_amount = float(deposit_match.group(1))  # Extracted deposit amount as a float
+        deposit_amount = float(deposit_match.group(1).replace(',', '')) # Extracted deposit amount as a float
         print(f"Deposit amount: {deposit_amount}")
 
         if deposit_amount == 0:
@@ -114,4 +118,5 @@ async def process_response(response_text, response_future):
 
 
 # Example usage (commented out, this would be run as part of your program)
-# asyncio.run(check_user_id(123456789))
+# if __name__ == '__main__':
+#     asyncio.run(check_user_id(123456789, 68638463486))
