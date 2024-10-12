@@ -25,7 +25,7 @@ async def process_queue():
         if request_queue:
             user_id, telegram_user_id = request_queue.popleft()
             await process_user_request(user_id, telegram_user_id)
-        await asyncio.sleep(1)  
+        await asyncio.sleep(10)  
 
 async def process_user_request(user_id, telegram_user_id):
     try:
@@ -36,23 +36,32 @@ async def process_user_request(user_id, telegram_user_id):
         try:
             response = await asyncio.wait_for(user_futures[telegram_user_id], timeout=30)
             print('The response is:', response)
-            result = await process_response(response)
-            print('The result is:', result)
+            # result = await process_response(response)
+            # print('The result is:', result)
         except asyncio.TimeoutError:
-            result = {"status": "error", "message": "Timeout waiting for response from bot."}
+            response = {"status": "error", "message": "Timeout waiting for response from bot."}
         
-        # Set the result in the future
-        user_futures[telegram_user_id].set_result(result)
-        print('The future is:', user_futures[telegram_user_id])
+        # Set the result in the future if it's not already done
+        if telegram_user_id in user_futures and not user_futures[telegram_user_id].done():
+            print("Setting the future result")
+            user_futures[telegram_user_id].set_result(response)
+        print('The future result is:', user_futures[telegram_user_id].result())
     except Exception as e:
         logging.error(f"Error processing request for user {telegram_user_id}: {e}")
-        user_futures[telegram_user_id].set_exception(e)
+        if telegram_user_id in user_futures and not user_futures[telegram_user_id].done():
+            user_futures[telegram_user_id].set_exception(e)
     finally:
         # Clean up the future
-        del user_futures[telegram_user_id]
+        user_futures.pop(telegram_user_id, None)
 
 async def check_user_id(user_id, telegram_user_id):
     try:
+        if not client.is_connected():
+            await client.start()
+            print('Client started...')
+            # Start the queue processing task
+            queue_task = asyncio.create_task(process_queue())
+            print('Queue processing task started...')
         # Create a future for this specific user
         user_futures[telegram_user_id] = asyncio.get_event_loop().create_future()
         
@@ -60,7 +69,9 @@ async def check_user_id(user_id, telegram_user_id):
         request_queue.append((user_id, telegram_user_id))
         
         # Wait for the result
-        return await user_futures[telegram_user_id]
+        future_result = await user_futures[telegram_user_id]
+        print('final future result:', future_result)
+        return future_result
     except Exception as e:
         logging.error(f"Error checking user ID: {e}")
         return {"status": "error", "message": str(e)}
@@ -87,19 +98,40 @@ async def handler(event):
     # Find the corresponding user future and set the result
     for telegram_user_id, future in user_futures.items():
         if not future.done():
-            future.set_result(event.raw_text)
+            processed_result = await process_response(event.raw_text)
+            print(f"Processed result for user ID {telegram_user_id}: {processed_result}")
+            future.set_result(processed_result)
             break
+
 
 async def main():
     await client.start()
     print('Client started...')
     # Start the queue processing task
-    asyncio.create_task(process_queue())
+    queue_task = asyncio.create_task(process_queue())
     print('Queue processing task started...')
-    # await check_user_id(49775259, 793076295)
+    
+    try:
+        for i in range(1):
+            a = 1211313 + i
+            b = 49775259 + i
+            result = await check_user_id(a, b)
+            print(f'Check result for user ID {a}: {result}')
+            await asyncio.sleep(1)
+    finally:
+        # Cancel the queue processing task
+        queue_task.cancel()
+        try:
+            await queue_task
+        except asyncio.CancelledError:
+            pass
+        print('Queue processing task cancelled')
+    
     # Run the client
     await client.run_until_disconnected()
     print('Client disconnected...')
 
 if __name__ == "__main__":
+    print('Starting the bot...')
     asyncio.run(main())
+    print('Bot stopped...')

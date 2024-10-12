@@ -13,6 +13,11 @@ from pymongo.errors import PyMongoError
 from dotenv import load_dotenv
 import os
 from verify_user import check_user_id
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+
 
 # keep_alive()
 load_dotenv()
@@ -38,7 +43,7 @@ isTestSignal = False
 
 # Dictionary to track the last time each user accessed the select_pair command
 user_last_access_time = {}
-COOLDOWN_PERIOD = 300  # Cooldown period in seconds (5 minutes)
+COOLDOWN_PERIOD = 10  # Cooldown period in seconds (5 minutes)
 
 
 # Referral link (replace with your actual link)
@@ -48,6 +53,8 @@ REFERRAL_LINK = "https://broker-qx.pro/?lid=1042851"
 # Create bot and dispatcher instances
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+router = Router()
+dp.include_router(router)
 
 
 
@@ -107,7 +114,7 @@ async def handle_inline_buttons(call: types.CallbackQuery):
             )
             isTestSignal = True
             # print('user id is : ', call.message.from_user.id)
-            print('user id is : ', call.message.from_user.id)
+            # print('user id is : ', call.message.from_user.id)
             await select_currency_pair(call.message, user_id)
         else:
             # Notify user they have exceeded the limit and must sign up
@@ -154,53 +161,73 @@ async def send_quota_exceeded_message(call: types.CallbackQuery):
     )
 
 
-# Handle registration confirmation
-# from extract_message import check_user_id  # Import the function from the file where it's defined
+class RegistrationStates(StatesGroup):
+    waiting_for_id = State()
 
-@dp.callback_query(lambda call: call.data == 'confirm_registration')
-async def confirm_registration(call: types.CallbackQuery):
+@router.callback_query(F.data == 'confirm_registration')
+async def confirm_registration(call: CallbackQuery, state: FSMContext):
     user_id = call.from_user.id
-    print('My User ID: ', user_id)
-    # check if user already registered and has deposited
+    print('My User ID:', user_id)
+
     user = await users_collection.find_one({"telegram_id": user_id})
-    # if user and user.get('is_registered', False) and user.get('has_deposited', False):
-    #     await call.message.answer("You have already registered and deposited. You don't need to verify again.")
-    #     return
-    
-    await call.message.answer("Please provide your registration ID for verification.")
+    if user and user.get('is_registered', False) and user.get('has_deposited', False):
+        await call.message.answer("You have already registered and deposited. You don't need to verify again.")
+        return
 
-    @dp.message()
-    async def receive_user_id(message: types.Message):
-        user_id_text = message.text.strip()
-        waiting_message = await message.answer("⏳ Please wait while we verify your ID...")
-        print(f"Quotex User ID: {user_id_text}")
+    await call.message.answer("Please provide your registration ID for verification(Enter only the ID in numbers).")
+    await state.set_state(RegistrationStates.waiting_for_id)
 
-        try:
-            verification_result = await check_user_id(user_id_text, call.from_user.id)
-            await waiting_message.delete()
-            print('verification_result: ', verification_result)
-            if verification_result["status"] == "not_registered":
-                await message.answer("User not found. Please register using the provided link.")
-            elif verification_result["status"] == "registered" and verification_result["deposit"]:
-                await users_collection.update_one(
-                    {"telegram_id": user_id},
-                    {"$set": {"is_registered": True, "has_deposited": True, "quotex_id": user_id_text}},
-                    upsert=True
+@router.message(RegistrationStates.waiting_for_id)
+async def receive_user_id(message: Message, state: FSMContext):
+    user_id_text = message.text.strip()
+    waiting_message = await message.answer("⏳ Please wait while we verify your ID. It may take a few minutes...")
+    print(f"Quotex User ID: {user_id_text}")
+
+    try:
+        verification_result = await check_user_id(user_id_text, message.from_user.id)
+        await waiting_message.delete()
+        print(f'verification_result for userID {user_id_text}:', verification_result)
+
+        if verification_result["status"] == "not_registered":
+            await message.answer("User not found. Please register using the provided link.")
+        elif verification_result["status"] == "registered":
+            is_deposited = verification_result["deposit"]
+            await users_collection.update_one(
+                {"telegram_id": message.from_user.id},
+                {"$set": {
+                    "is_registered": True,
+                    "has_deposited": is_deposited,
+                    "quotex_id": user_id_text
+                }},
+                upsert=True
+            )
+            if is_deposited:
+                await message.answer(
+                    "✅ Verification successful\\! You now have full access to the bot\\.",
+                    parse_mode='MarkdownV2'
                 )
-                await message.answer("Verification successful! You now have full access to the bot.")
-            elif verification_result["status"] == "registered" and not verification_result["deposit"]:
-                await users_collection.update_one(
-                    {"telegram_id": user_id},
-                    {"$set": {"is_registered": True, "has_deposited": False, "quotex_id": user_id_text}},
-                    upsert=True
-                )
-                await message.answer("Please ensure you have a minimum deposit of $50 and again check with your ID. Then you can access the bot.")
             else:
-                await message.answer("Verification failed. Please ensure you have a minimum deposit of $50.")
-        
-        except Exception as e:
-            logging.error(f"Error verifying user: {e}")
-            await message.answer("An error occurred during verification. Please try again.")
+                await message.answer(
+                    "🔍 We have found your ID in our database, but you haven't deposited\\! "
+                    "Please ensure you have a minimum deposit of \\$50 and check again with your ID\\. "
+                    "Then you can access the bot\\.",
+                    parse_mode='MarkdownV2'
+                )
+        else:
+            await message.answer(
+                "❌ Verification failed\\! You haven't registered through my referral link\\. "
+                "Please register with my link and ensure you have a minimum deposit of \\$50\\.",
+                parse_mode='MarkdownV2'
+            )
+    except Exception as e:
+        logging.error(f"Error verifying user: {e}")
+        await message.answer(
+            "⚠️ An error occurred during verification\\. Please try again\\.",
+            parse_mode='MarkdownV2'
+        )
+    finally:
+        await state.clear()
+
 
 
 
@@ -213,11 +240,14 @@ async def back_to_menu(call: types.CallbackQuery):
 # Currency pair selection with access control
 @dp.message(Command(commands=['select_pair']))
 async def select_currency_pair(message: types.Message, user_id: int = None):
+    print('My User ID:', user_id)
     if user_id is None:
         user_id = message.from_user.id  # Get user_id from the message if not provided
+        await users_collection.update_one({"telegram_id": user_id}, {"$set": {"username": message.from_user.username, "name": f"{message.from_user.first_name} {message.from_user.last_name or ''}".strip()}})
+        print('user id is : ', user_id)
 
     current_time = asyncio.get_event_loop().time()  # Get the current time in seconds
-    await users_collection.update_one({"telegram_id": user_id}, {"$set": {"username": message.from_user.username, "name": f"{message.from_user.first_name} {message.from_user.last_name or ''}".strip()}})
+    
     # Check if the user is in cooldown
     last_access_time = user_last_access_time.get(user_id, 0)
     if current_time - last_access_time < COOLDOWN_PERIOD:
@@ -243,9 +273,19 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
         button_pairs = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
 
         keyboard = InlineKeyboardMarkup(inline_keyboard=button_pairs)
-        await message.answer("Please select a currency pair:", reply_markup=keyboard)
+        await message.answer(
+            "Please select a currency pair:\n\n"
+            "❗️It is important to correlate risks, stick to your own trading plan "
+            "and do not use more than 2% of your deposit for one trade\\!\n\n"
+            "A trading robot is not a guarantee of earnings, artificial intelligence "
+            "is just beginning to try its capabilities in trading, before entering "
+            "a deal on a signal, analyse the entry point yourself\\!\n\n"
+            "All responsibility for wrong investment decisions lies with you\\!",
+            reply_markup=keyboard,
+            parse_mode='MarkdownV2'
+        )
     else:
-        await message.answer("You are not verified. Please complete the registration with a minimum deposit of $50 to access this feature.")
+        await message.answer("❌ You are not verified. Please complete the registration with a minimum deposit of $50 to access this feature.")
 
 
 
