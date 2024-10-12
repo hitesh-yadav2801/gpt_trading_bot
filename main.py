@@ -180,8 +180,16 @@ async def confirm_registration(call: CallbackQuery, state: FSMContext):
 @router.message(RegistrationStates.waiting_for_id)
 async def receive_user_id(message: Message, state: FSMContext):
     user_id_text = message.text.strip()
+    if len(user_id_text) != 8:
+        await message.answer(
+            "❌ Invalid input\\. The registration ID should be 8 characters long\\. "
+            "Please try again with a valid ID\\.",
+            parse_mode='MarkdownV2'
+        )
+        return
     waiting_message = await message.answer("⏳ Please wait while we verify your ID. It may take a few minutes...")
     print(f"Quotex User ID: {user_id_text}")
+
 
     try:
         verification_result = await check_user_id(user_id_text, message.from_user.id)
