@@ -252,7 +252,7 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
     last_access_time = user_last_access_time.get(user_id, 0)
     if current_time - last_access_time < COOLDOWN_PERIOD:
         remaining_time = COOLDOWN_PERIOD - (current_time - last_access_time)
-        cooldown_message = await message.answer(f"You can only access the currency pair selection every 5 minutes. Please wait {int(remaining_time)} seconds.")
+        cooldown_message = await message.answer(f"You can only access the currency pair selection every 7 minutes. Please wait {int(remaining_time)} seconds.")
         await asyncio.sleep(5)
         await bot.delete_message(chat_id=message.chat.id, message_id=cooldown_message.message_id)
         return
