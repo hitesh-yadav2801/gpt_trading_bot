@@ -39,7 +39,7 @@ MAX_TEST_SIGNALS = 1
 # In-memory dictionary to track test signal usage by each user (could be replaced by database)
 # user_signal_count = {}
 # user_verification_data = {}
-isTestSignal = False
+# isTestSignal = False
 
 # Dictionary to track the last time each user accessed the select_pair command
 user_last_access_time = {}
@@ -101,18 +101,18 @@ async def start(message: types.Message):
 @dp.callback_query(lambda call: call.data in ['access_bot', 'test_signal', 'contact_genuine'])
 async def handle_inline_buttons(call: types.CallbackQuery):
     user_id = call.from_user.id
-    global isTestSignal
+    # global isTestSignal
 
     # Test Signal button logic
     if call.data == 'test_signal':
         user = await users_collection.find_one({"telegram_id": user_id})
         if user and user.get('user_signal_count', 0) <= MAX_TEST_SIGNALS:
             # Provide test signal and increment count
-            await users_collection.update_one(
-                {"telegram_id": user_id},
-                {"$inc": {"user_signal_count": 1}}
-            )
-            isTestSignal = True
+            # await users_collection.update_one(
+            #     {"telegram_id": user_id},
+            #     {"$inc": {"user_signal_count": 1}}
+            # )
+            # isTestSignal = True
             # print('user id is : ', call.message.from_user.id)
             # print('user id is : ', call.message.from_user.id)
             await select_currency_pair(call.message, user_id)
@@ -261,9 +261,10 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
     print('user type: ', type(user))
     print('user details: ', user)
 
-    if user and ((user.get("is_registered") and user.get("has_deposited")) or (user.get("user_signal_count", 0) <= MAX_TEST_SIGNALS and isTestSignal)):
+    if user and ((user.get("is_registered") and user.get("has_deposited")) or (user.get("user_signal_count", 0) < MAX_TEST_SIGNALS)):
         logging.info(f"Selecting currency pair for user {user_id}")
-
+        if user.get("user_signal_count", 0) < MAX_TEST_SIGNALS:
+            await users_collection.update_one({"telegram_id": user_id}, {"$inc": {"user_signal_count": 1}})
         # Create inline buttons for currency pairs, two per row
         buttons = [
             InlineKeyboardButton(text=pair, callback_data=pair) for pair in CURRENCY_PAIRS
