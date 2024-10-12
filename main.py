@@ -43,7 +43,7 @@ isTestSignal = False
 
 # Dictionary to track the last time each user accessed the select_pair command
 user_last_access_time = {}
-COOLDOWN_PERIOD = 300  # Cooldown period in seconds (5 minutes)
+COOLDOWN_PERIOD = 420  # Cooldown period in seconds (5 minutes)
 
 
 # Referral link (replace with your actual link)
@@ -315,7 +315,7 @@ async def handle_currency_pair_selection(call: types.CallbackQuery):
     
     # Get the trading signal
     signal = await get_trading_signal(trimmed_pair)
-    
+    print('signal is : ', signal)
     # Delete the loading message after fetching the signal
     await bot.delete_message(chat_id=loading_message.chat.id, message_id=loading_message.message_id)
     
