@@ -43,7 +43,7 @@ isTestSignal = False
 
 # Dictionary to track the last time each user accessed the select_pair command
 user_last_access_time = {}
-COOLDOWN_PERIOD = 10  # Cooldown period in seconds (5 minutes)
+COOLDOWN_PERIOD = 300  # Cooldown period in seconds (5 minutes)
 
 
 # Referral link (replace with your actual link)
