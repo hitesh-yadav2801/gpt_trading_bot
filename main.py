@@ -1,5 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher, types
+import aiogram
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 import logging
@@ -17,6 +18,8 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.exceptions import TelegramBadRequest
+from get_demo_trading_signal import get_demo_trading_signal
 
 
 # keep_alive()
@@ -43,7 +46,7 @@ MAX_TEST_SIGNALS = 1
 
 # Dictionary to track the last time each user accessed the select_pair command
 user_last_access_time = {}
-COOLDOWN_PERIOD = 420  # Cooldown period in seconds (5 minutes)
+COOLDOWN_PERIOD = 300  # Cooldown period in seconds (5 minutes)
 
 
 # Referral link (replace with your actual link)
@@ -260,10 +263,12 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
     last_access_time = user_last_access_time.get(user_id, 0)
     if current_time - last_access_time < COOLDOWN_PERIOD:
         remaining_time = COOLDOWN_PERIOD - (current_time - last_access_time)
-        cooldown_message = await message.answer(f"You can only access the currency pair selection every 7 minutes. Please wait {int(remaining_time)} seconds.")
+        cooldown_message = await message.answer(f"You can only access the currency pair selection every 5 minutes. Please wait {int(remaining_time)} seconds.")
         await asyncio.sleep(5)
         await bot.delete_message(chat_id=message.chat.id, message_id=cooldown_message.message_id)
         return
+    
+    user_last_access_time[user_id] = current_time
 
     user = await users_collection.find_one({"telegram_id": user_id})
     print('user type: ', type(user))
@@ -282,7 +287,7 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
         button_pairs = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
 
         keyboard = InlineKeyboardMarkup(inline_keyboard=button_pairs)
-        await message.answer(
+        reply_message = await message.answer(
             "Please select a currency pair:\n\n"
             "❗️It is important to correlate risks, stick to your own trading plan "
             "and do not use more than 2% of your deposit for one trade\\!\n\n"
@@ -293,6 +298,15 @@ async def select_currency_pair(message: types.Message, user_id: int = None):
             reply_markup=keyboard,
             parse_mode='MarkdownV2'
         )
+        # Wait for 60 seconds, then check if the message still exists (not interacted with)
+        await asyncio.sleep(120)
+        try:
+            # Attempt to delete the message if it hasn't been used within 1 minute
+            await bot.delete_message(chat_id=message.chat.id, message_id=reply_message.message_id)
+        except TelegramBadRequest:
+            print("Message already deleted")
+            # Message was already deleted (either by interaction or another process)
+            pass
     else:
         await message.answer("❌ You are not verified. Please complete the registration with a minimum deposit of $50 to access this feature.")
 
@@ -323,7 +337,8 @@ async def handle_currency_pair_selection(call: types.CallbackQuery):
     loading_message = await bot.send_message(call.from_user.id, f"Fetching live data for {trimmed_pair}. Please wait...")
     
     # Get the trading signal
-    signal = await get_trading_signal(trimmed_pair)
+    # signal = await get_trading_signal(trimmed_pair)
+    signal = await get_demo_trading_signal(trimmed_pair)
     print('signal is : ', signal)
     # Delete the loading message after fetching the signal
     await bot.delete_message(chat_id=loading_message.chat.id, message_id=loading_message.message_id)

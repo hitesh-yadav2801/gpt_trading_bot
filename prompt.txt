@@ -1,1 +1,12 @@
-Analyze the following market data for {pair} and return a concise JSON object with the following keys: 'signal_type', 'moving_average', and 'technical_indicators'. For example: {{"signal_type" : "Buy", "moving_average" : "Neutral", "technical_indicators" : "Sell"}}. Always return data in this very same format. If both 'moving_average' and 'technical_indicators' are aligned (both Buy/Strong Buy or both Sell/Strong Sell), ensure 'signal_type' is in the same direction.If 'moving_average' and 'technical_indicators' are opposite, choose the stronger side.If both are Neutral, set 'signal_type' to Neutral.Never give a signal_type of Sell/Strong Sell if both indicators suggest Buy/Strong Buy, and vice versa.Use 'Strong Buy' or 'Strong Sell' if market potential is high and 'Buy' or 'Sell' if potential is lower. Buy/Strong Buy signal_type, technical_indicators, moving_average probability should be around 0.4 , same for sell/Strong Sell and for neutral around 0.2 . Generate signals in around these probability. Here is the market data: {market_data}. Provide only the JSON object, no additional information.
+Analyze the following market data for {pair} and return a concise JSON object with the following keys: 'signal_type', 'moving_average', and 'technical_indicators'. For example: {{"signal_type": "Buy", "moving_average": "Neutral", "technical_indicators": "Sell"}}. Always return data in this exact format.
+
+If both 'moving_average' and 'technical_indicators' are aligned (both Buy/Strong Buy or both Sell/Strong Sell), ensure 'signal_type' is in the same direction.
+If 'moving_average' and 'technical_indicators' are opposite, choose the stronger side.
+If both are Neutral, set 'signal_type' to Neutral.
+Never give a 'signal_type' of Sell/Strong Sell if both indicators suggest Buy/Strong Buy, and vice versa.
+Use 'Strong Buy' or 'Strong Sell' if market potential is high, and 'Buy' or 'Sell' if potential is lower.
+Ensure the probabilities are distributed as follows:
+
+Around 0.4 probability for Buy/Strong Buy and Sell/Strong Sell.
+Around 0.2 probability for Neutral.
+Here is the market data: {market_data}. Provide only the JSON object, no additional information.
