@@ -33,8 +33,8 @@ def fetch_forex_data(from_currency, to_currency, start_date, resample_freq):
 
         # Create a DataFrame from the response data
         df = pd.DataFrame.from_dict(data)
-        if len(df) > 100:
-            df = df.tail(100)
+        if len(df) > 200:
+            df = df.tail(200)
         
         # Optionally print the first 3 entries for inspection
         # pprint(data[:3])
