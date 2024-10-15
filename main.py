@@ -13,6 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
 from dotenv import load_dotenv
 import os
+from keep_alive import keep_alive
 from verify_user import check_user_id
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
@@ -23,13 +24,19 @@ from get_demo_trading_signal import get_demo_trading_signal
 from logging.handlers import RotatingFileHandler
 
 
-# keep_alive()
+keep_alive()
 load_dotenv()
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 # Set up logging to file and console
 # Configure logging
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler("app.log"),
+                        logging.StreamHandler()
+                    ])
 
 
 API_TOKEN = os.environ.get("BOT_API_TOKEN")
