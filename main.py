@@ -20,6 +20,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramBadRequest
 from get_demo_trading_signal import get_demo_trading_signal
+from logging.handlers import RotatingFileHandler
 
 
 # keep_alive()
@@ -27,6 +28,9 @@ load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
+# Set up logging to file and console
+# Configure logging
+
 
 API_TOKEN = os.environ.get("BOT_API_TOKEN")
 
@@ -58,6 +62,9 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
+
+# Log when the bot starts
+# logger.info("Bot has started successfully.")
 
 
 
@@ -186,9 +193,10 @@ async def receive_user_id(message: Message, state: FSMContext):
     if len(user_id_text) != 8:
         await message.answer(
             "❌ Invalid input\\. The registration ID should be 8 characters long\\. "
-            "Please try again with a valid ID\\.",
+            "Please click the button '✅ I registered through your link ✅' and try again with a valid ID\\.",
             parse_mode='MarkdownV2'
         )
+        await state.clear()
         return
     waiting_message = await message.answer("⏳ Please wait while we verify your ID. It may take a few minutes...")
     print(f"Quotex User ID: {user_id_text}")
