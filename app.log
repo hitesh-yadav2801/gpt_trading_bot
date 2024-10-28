@@ -4,9 +4,19 @@ INFO:telethon.crypto.aes:libssl detected, it will be used for encryption
 INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:8080
- * Running on http://192.168.29.115:8080
+ * Running on http://192.168.1.20:8080
 INFO:werkzeug:[33mPress CTRL+C to quit[0m
 INFO:root:Starting the bot
 INFO:aiogram.dispatcher:Start polling
 INFO:aiogram.dispatcher:Run polling for bot @TestGPTTradingBot id=7928143286 - 'Testing GPT Bot'
-INFO:aiogram.event:Update id=645887688 is handled. Duration 1057 ms by bot id=7928143286
+INFO:aiogram.event:Update id=645887692 is handled. Duration 1185 ms by bot id=7928143286
+INFO:root:Start command received from user 793076295
+INFO:aiogram.event:Update id=645887693 is handled. Duration 368 ms by bot id=7928143286
+INFO:aiogram.event:Update id=645887694 is handled. Duration 414 ms by bot id=7928143286
+INFO:aiogram.event:Update id=645887695 is handled. Duration 838 ms by bot id=7928143286
+WARNING:aiogram.dispatcher:Received SIGTERM signal
+INFO:aiogram.dispatcher:Polling stopped for bot @TestGPTTradingBot id=7928143286 - 'Testing GPT Bot'
+INFO:aiogram.dispatcher:Polling stopped
+My User ID: 793076295
+My User ID: 793076295
+My User ID: 793076295

@@ -20,26 +20,29 @@ signal_probability = {
 
 def get_random_signal():
     """
-    Randomly selects moving average and technical indicators based on defined probabilities.
-    Ensures that the signal type is aligned if both indicators are in the same direction.
+    Generates initial random signals for moving average and technical indicators.
+    Aligns signal_type and moving_average based on the technical_indicators value.
+    Then, applies a 50% probability to reverse each signal component.
     """
-    moving_average = random.choices(
-        possible_signals['moving_average'],
-        weights=[signal_probability[s] for s in possible_signals['moving_average']]
-    )[0]
-    
+    # Randomly select technical indicators
     technical_indicators = random.choices(
         possible_signals['technical_indicators'],
         weights=[signal_probability[s] for s in possible_signals['technical_indicators']]
     )[0]
     
-    # If technical indicator is 'Buy', align moving average and signal_type to 'Buy', and vice versa for 'Sell'
+    # Set signal_type and moving_average based on technical_indicators
     if technical_indicators == "Buy":
         moving_average = "Buy"
         signal_type = "Buy"
-    elif technical_indicators == "Sell":
+    else:  # technical_indicators == "Sell"
         moving_average = "Sell"
         signal_type = "Sell"
+
+    # Apply 50% probability to reverse each signal component
+    if random.random() < 0.5:
+        signal_type = "Sell" if signal_type == "Buy" else "Buy"
+        moving_average = "Sell" if moving_average == "Buy" else "Buy"
+        technical_indicators = "Sell" if technical_indicators == "Buy" else "Buy"
     
     return {
         "signal_type": signal_type,
@@ -80,6 +83,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 # import asyncio
